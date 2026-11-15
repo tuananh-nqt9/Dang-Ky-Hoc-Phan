@@ -1,0 +1,6 @@
+run_at,vus,iterations,duration_seconds,total_requests,successful_requests,failed_requests,success_rate_percent,avg_response_time_ms,p95_ms,p99_ms,rps
+KT1: 1 SV đăng ký khi còn chỗ,1,1,1,1,1,0,100.0,151.0,151.0,151.0,6.6
+KT2: 3 SV tranh 1 chỗ cuối,3,3,1,3,1,2,33.33,149.48,158.88,159.72,18.72
+KT3: 1 SV gửi lặp 4 request,4,4,1,4,1,3,25.0,182.65,183.95,183.98,19.21
+KT4: 50 SV đăng ký lớp trùng lịch,50,50,1,50,0,50,0.0,666.8,934.01,962.23,42.82
+KT5: 1 SV hủy nhả chỗ & 30 SV tranh chỗ,31,31,1,31,2,29,6.45,602.44,700.65,710.58,30.93

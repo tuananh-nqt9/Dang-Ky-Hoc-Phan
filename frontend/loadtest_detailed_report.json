@@ -1,0 +1,46 @@
+{
+  "report_type": "loadtest",
+  "generated_at": "2026-11-15 23:00:17",
+  "scenarios": [
+    {
+      "id": "500 VUs",
+      "title": "Mức tải 500 VUs đồng thời",
+      "description": "500 SV gửi POST /api/v1/register vào lớp sức chứa 200 chỗ",
+      "passed": true,
+      "conclusion": "Invariant PASS: remaining (0) + active (200) == capacity (200)",
+      "before": {
+        "capacity": 200,
+        "remaining_seats": 200,
+        "active_registrations": 0
+      },
+      "after": {
+        "capacity": 200,
+        "remaining_seats": 0,
+        "active_registrations": 200
+      },
+      "codes": {
+        "200:REGISTERED": 200,
+        "409:CLASS_FULL": 300
+      },
+      "metrics": {
+        "run_at": "500 VUs (23:00:17)",
+        "vus": 500,
+        "iterations": 500,
+        "duration_seconds": 25,
+        "total_requests": 500,
+        "successful_requests": 200,
+        "failed_requests": 300,
+        "success_rate_percent": 40.0,
+        "avg_response_time_ms": 7947.43,
+        "p95_ms": 20781.12,
+        "p99_ms": 23109.67,
+        "rps": 20.36,
+        "wall_seconds": 24.56
+      }
+    }
+  ],
+  "aggregated_codes": {
+    "200:REGISTERED": 200,
+    "409:CLASS_FULL": 300
+  }
+}
