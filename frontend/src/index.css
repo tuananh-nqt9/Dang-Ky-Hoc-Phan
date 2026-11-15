@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* Custom theme overrides for red-themed DKHP system */
+@theme {
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #991b1b;
+  --color-primary-900: #7f1d1d;
+  --color-primary-950: #450a0a;
+}
+
+@layer base {
+  button:not(:disabled),
+  a[href],
+  summary,
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.student-dashboard-page {
+  background-color: #f9fafb;
+  background-image:
+    radial-gradient(ellipse at 96% 0%, rgba(131, 21, 21, 0.07) 0, transparent 100rem),
+    radial-gradient(ellipse at 0% 42%, rgb(244 63 94 / 4%) 0, transparent 100rem);
+}
+
+.student-dashboard-header {
+  background-image: linear-gradient(100deg, #fff 0%, #fffafa 52%, #fff 100%);
+  border-bottom-color: #fee2e2;
+}
+
+.student-dashboard-sidebar {
+  background-image: linear-gradient(180deg, #fff 0%, #fff 74%, #fffafa 100%);
+  border-right-color: #fee2e2;
+}
+
+.student-dashboard-card {
+  background-color: #fff;
+  background-image:
+    radial-gradient(ellipse at 100% 0%, rgb(220 38 38 / 8%) 0, transparent 18rem),
+    linear-gradient(135deg, #fff 0%, #fff 68%, #fffafa 100%);
+  box-shadow: 0 8px 24px rgb(127 29 29 / 4%), 0 1px 3px rgb(17 24 39 / 3%);
+}
+
+.tuition-progress-segment {
+  transition: stroke-width 200ms ease-out, filter 200ms ease-out;
+}
+
+.tuition-progress-segment-paid {
+  transition: stroke-dashoffset 700ms ease-out, stroke-width 200ms ease-out, filter 200ms ease-out;
+}
+
+.tuition-progress-segment.is-highlighted {
+  stroke-width: 13px;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tuition-progress-segment,
+  .tuition-progress-segment-paid {
+    transition: none;
+  }
+}
+
+.login-error-notice {
+  animation: login-error-notice 420ms ease-out both;
+}
+
+@keyframes login-error-notice {
+  0% {
+    opacity: 0.6;
+    transform: translateY(-4px) scale(0.99);
+  }
+
+  35% {
+    opacity: 1;
+    transform: translateX(-4px);
+  }
+
+  65% {
+    transform: translateX(3px);
+  }
+
+  85% {
+    transform: translateX(-1px);
+  }
+
+  100% {
+    transform: translate(0) scale(1);
+  }
+}
+
+.student-greeting-text {
+  display: inline-block;
+  max-width: 100%;
+  transform-origin: left center;
+  animation:
+    student-greeting-reveal 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    student-greeting-expand 5s ease-in-out 700ms infinite;
+}
+
+@keyframes student-greeting-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.45;
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes student-greeting-expand {
+  0%,
+  78%,
+  100% {
+    transform: scaleX(1);
+  }
+
+  90% {
+    transform: scaleX(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-error-notice {
+    animation: none;
+  }
+
+  .student-greeting-text {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    clip-path: none;
+  }
+}
