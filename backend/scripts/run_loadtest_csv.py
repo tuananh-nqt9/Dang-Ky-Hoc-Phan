@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import csv
 import hashlib
+import json
 import math
 import secrets
 import time
@@ -26,6 +27,7 @@ from psycopg.rows import dict_row
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CSV_PATH = REPO_ROOT / "frontend" / "sample-load-test-results.csv"
 PUBLIC_CSV_PATH = REPO_ROOT / "frontend" / "public" / "sample-load-test-results.csv"
+LOADTEST_JSON_REPORT_PATH = REPO_ROOT / "frontend" / "loadtest_detailed_report.json"
 DEFAULT_DB_URL = "postgresql://dkhp_user:dkhp_dev_pass@localhost:5432/dkhp_dev"
 DEFAULT_API_URL = "http://localhost:8080"
 BENCHMARK_CLASS_ID = "LHP999"
@@ -244,6 +246,7 @@ async def run_single_level(
     selected_tokens = tokens[:vus]
     latencies_ms: list[float] = []
     status_counts: dict[int, int] = {}
+    codes: dict[str, int] = {}
     success_count = 0
     failure_count = 0
 
@@ -279,6 +282,9 @@ async def run_single_level(
                     elapsed_ms = (time.perf_counter() - t0) * 1000.0
                     latencies_ms.append(elapsed_ms)
                     status_counts[resp.status_code] = status_counts.get(resp.status_code, 0) + 1
+                    body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                    code_str = f"{resp.status_code}:{body.get('code', 'UNKNOWN')}"
+                    codes[code_str] = codes.get(code_str, 0) + 1
                     if resp.status_code in (200, 201):
                         success_count += 1
                     else:
@@ -287,6 +293,7 @@ async def run_single_level(
                     elapsed_ms = (time.perf_counter() - t0) * 1000.0
                     latencies_ms.append(elapsed_ms)
                     status_counts[0] = status_counts.get(0, 0) + 1
+                    codes["0:NETWORK_ERROR"] = codes.get("0:NETWORK_ERROR", 0) + 1
                     failure_count += 1
 
         wall_start = time.perf_counter()
@@ -318,6 +325,7 @@ async def run_single_level(
         "p99_ms": round(p99_ms, 2),
         "rps": round(rps, 2),
         "status_counts": status_counts,
+        "codes": codes,
         "wall_seconds": round(wall_elapsed, 2),
     }
 
@@ -377,6 +385,7 @@ def main() -> int:
     session_ids = [t["session_id"] for t in tokens]
 
     results: list[dict[str, Any]] = []
+    scenarios_report: list[dict[str, Any]] = []
     try:
         print(f"[2/4] Bắt đầu bắn tải thật vào {args.api_url}/api/v1/register cho các mức: {levels}")
         for vus in levels:
@@ -384,18 +393,42 @@ def main() -> int:
             metrics = asyncio.run(run_single_level(args.api_url, tokens, vus=vus))
             inv_ok, cap, rem, act = verify_benchmark_class_invariant(args.db_url)
             results.append(metrics)
+            scenarios_report.append(
+                {
+                    "id": f"{vus} VUs",
+                    "title": f"Mức tải {vus} VUs đồng thời",
+                    "description": f"{vus} SV gửi POST /api/v1/register vào lớp sức chứa {cap} chỗ",
+                    "passed": bool(inv_ok),
+                    "conclusion": f"Invariant PASS: remaining ({rem}) + active ({act}) == capacity ({cap})" if inv_ok else f"Invariant FAIL: rem={rem}, act={act}, cap={cap}",
+                    "before": {"capacity": cap, "remaining_seats": cap, "active_registrations": 0},
+                    "after": {"capacity": cap, "remaining_seats": rem, "active_registrations": act},
+                    "codes": metrics["codes"],
+                    "metrics": {k: v for k, v in metrics.items() if k not in ("codes", "status_counts")},
+                }
+            )
             print(
                 f"  -> Mức {vus:4d} VUs | Thành công: {metrics['successful_requests']:4d}/{metrics['total_requests']:4d} "
                 f"({metrics['success_rate_percent']:6.2f}%) | Avg: {metrics['avg_response_time_ms']:7.2f} ms | "
                 f"P95: {metrics['p95_ms']:7.2f} ms | P99: {metrics['p99_ms']:7.2f} ms | "
                 f"RPS: {metrics['rps']:6.2f} | Invariant(rem={rem}+act={act}=={cap}): {'PASS' if inv_ok else 'FAIL'} | "
-                f"HTTP: {metrics['status_counts']}"
+                f"HTTP: {metrics['codes']}"
             )
 
-        print("[3/4] Đang ghi kết quả ra file CSV...")
+        print("[3/4] Đang ghi kết quả ra file CSV & JSON...")
         write_csv_results(results, [DEFAULT_CSV_PATH, PUBLIC_CSV_PATH])
+        aggregated_codes: dict[str, int] = {}
+        for sc in scenarios_report:
+            for code_key, cnt in sc["codes"].items():
+                aggregated_codes[code_key] = aggregated_codes.get(code_key, 0) + int(cnt)
+        report_payload = {
+            "report_type": "loadtest",
+            "generated_at": datetime.now(timezone(timedelta(hours=7))).strftime("%Y-%m-%d %H:%M:%S"),
+            "scenarios": scenarios_report,
+            "aggregated_codes": aggregated_codes,
+        }
+        LOADTEST_JSON_REPORT_PATH.write_text(json.dumps(report_payload, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  -> Đã cập nhật: {DEFAULT_CSV_PATH}")
-        print(f"  -> Đã cập nhật: {PUBLIC_CSV_PATH}")
+        print(f"  -> Đã cập nhật: {LOADTEST_JSON_REPORT_PATH}")
     finally:
         print("[4/4] Đang dọn dẹp dữ liệu tạm (giữ nguyên dữ liệu UI LHP001..LHP003)...")
         cleanup_benchmark_environment(args.db_url, session_ids)
