@@ -672,9 +672,36 @@ Chế độ `--mode loadtest` thiết lập lớp `LHP001` có `capacity = 1000`
 ```
 
 ### 12.4. Sao lưu Nóng & Phục hồi Kiểm chứng (`pg_dump` / `pg_restore`)
-Quy trình sao lưu snapshot nhất quán và khôi phục kiểm chứng sang một database độc lập (không ghi đè lên database đang chạy):
+Quy trình sao lưu snapshot nhất quán và khôi phục kiểm chứng sang một database độc lập (`dkhp_restore_verify` — không ghi đè lên database `dkhp_dev` đang chạy):
+
+#### Cách A — Chạy qua Docker Compose (Khuyến nghị khi chạy bằng Docker Desktop)
+
+**Thư mục làm việc**: thư mục gốc dự án (`D:\Code\DangKyHocPhanTrucTuyen`)
 
 ```powershell
+# 1. SAO LƯU: Chạy pg_dump bên trong container postgres để tạo file dkhp_snapshot.dump và lấy ra thư mục dự án
+docker exec backend-dkhp-postgres-1 pg_dump -U dkhp_user -d dkhp_dev --format=custom --no-owner --no-privileges -f /tmp/dkhp_snapshot.dump
+docker cp backend-dkhp-postgres-1:/tmp/dkhp_snapshot.dump ./dkhp_snapshot.dump
+
+# 2. KHÔI PHỤC: Tạo database kiểm chứng độc lập (dkhp_restore_verify) và chạy pg_restore đưa dữ liệu vào đó
+docker exec backend-dkhp-postgres-1 psql -U dkhp_user -d postgres -c "DROP DATABASE IF EXISTS dkhp_restore_verify;"
+docker exec backend-dkhp-postgres-1 psql -U dkhp_user -d postgres -c "CREATE DATABASE dkhp_restore_verify;"
+docker exec backend-dkhp-postgres-1 pg_restore -U dkhp_user -d dkhp_restore_verify --no-owner --no-privileges /tmp/dkhp_snapshot.dump
+
+# 3. KIỂM TRA: Chạy check_invariants.py để đối soát 5 bất biến toàn vẹn trên database vừa khôi phục
+docker exec backend-dkhp-api-1 python -m scripts.check_invariants --database-url "postgresql://dkhp_user:dkhp_dev_pass@postgres:5432/dkhp_restore_verify"
+```
+
+#### Cách B — Chạy trực tiếp trên Windows (Khi máy đã cài sẵn bộ công cụ PostgreSQL 16 Client vào PATH)
+
+**Thư mục làm việc**: `D:\Code\DangKyHocPhanTrucTuyen\backend`
+
+```powershell
+# Khai báo các biến kết nối
+$env:DATABASE_URL = "postgresql://dkhp_user:dkhp_dev_pass@localhost:5432/dkhp_dev"
+$env:ADMIN_DATABASE_URL = "postgresql://dkhp_user:dkhp_dev_pass@localhost:5432/postgres"
+$env:RESTORE_DATABASE_URL = "postgresql://dkhp_user:dkhp_dev_pass@localhost:5432/dkhp_restore_verify"
+
 # 1. Sao lưu nóng ở định dạng custom của PostgreSQL 16
 pg_dump --format=custom --no-owner --no-privileges --file="dkhp_snapshot.dump" "$env:DATABASE_URL"
 
